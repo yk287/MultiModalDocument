@@ -1,4 +1,7 @@
 
+
+model_name = 'microsoft/layoutlm-base-uncased'
+
 import pandas as pd
 
 # module used to get names of folders or names of images
@@ -161,8 +164,8 @@ features = Features({
     'labels': ClassLabel(num_classes=len(label2id), names=list(label2id.keys())),
 })
 
-processor = LayoutLMv2Processor.from_pretrained("microsoft/layoutlmv2-base-uncased", revision="no_ocr",
-                                                num_labels=len(label2id))
+#processor = LayoutLMv2Processor.from_pretrained("microsoft/layoutlmv2-base-uncased", revision="no_ocr", num_labels=len(label2id))
+processor = LayoutLMv2Processor.from_pretrained(model_name,  num_labels=len(label2id))
 
 def preprocess_data(examples):
     # take a batch of images
@@ -222,6 +225,7 @@ valid_dataloader = torch.utils.data.DataLoader(encoded_valid_dataset, batch_size
 
 from transformers import LayoutLMv2ForSequenceClassification
 
+#model = LayoutLMv2ForSequenceClassification.from_pretrained("microsoft/layoutlmv2-base-uncased", revision="no_ocr", num_labels=len(label2id))
 model = LayoutLMv2ForSequenceClassification.from_pretrained("microsoft/layoutlmv2-base-uncased", revision="no_ocr", num_labels=len(label2id))
 model = model.to(device)
 

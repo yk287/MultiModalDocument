@@ -62,6 +62,21 @@ if isinstance(file_names[0], list):
     valid_data['label'] = valid_data.image_path.str.split('/', expand=True)[2]
     test_data['label'] = test_data.image_path.str.split('/', expand=True)[2]
 
+
+####################
+# import focalloss #
+####################
+
+from focalloss import reweight, FocalLoss
+
+#print(train_data.groupby('label').count())
+
+cls_num_dict = train_data.groupby('label').count().apply(list).to_dict()
+
+cls_num_dict = cls_num_dict['image_path']
+
+reweight_value = reweight(cls_num_dict)
+
 from datasets import Dataset
 
 # read dataframe as HuggingFace Datasets object
@@ -201,6 +216,8 @@ def encode_example(example, max_seq_length=512, pad_token_box=[0, 0, 0, 0]):
 
 from datasets import Features, Sequence, ClassLabel, Value, Array2D, Array3D
 
+import datasets
+print(datasets.__version__)
 cutoff = 128
 
 # we need to define the features ourselves as the bbox of LayoutLM are an extra feature
@@ -237,7 +254,7 @@ model = LayoutLMForSequenceClassification.from_pretrained("microsoft/layoutlm-ba
 model.to(device)
 
 from transformers import AdamW
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 optimizer = AdamW(model.parameters(), lr=5e-5)
 
@@ -245,6 +262,12 @@ global_step = 0
 num_train_epochs = 25
 
 t_total = len(train_dataloader) * num_train_epochs  # total number of training steps
+
+reweight_value = reweight_value.to(device)
+FL = FocalLoss(reweight_value)
+FL = FL.to(device)
+
+
 
 # put the model in training mode
 
@@ -264,10 +287,15 @@ for epoch in range(num_train_epochs):
                         labels=batch["label"].to(device),
                         )
 
-        loss = outputs.loss
-        running_loss += loss.item()
+        #loss = outputs.loss
+
+
+        loss = FL(outputs.logits, batch['label'].to(device))
+
         predictions = outputs.logits.argmax(-1)
         correct += (predictions == batch['label'].to(device)).float().sum()
+
+        running_loss += loss.item()
         # backward pass to get the gradients
         loss.backward()
         # update
